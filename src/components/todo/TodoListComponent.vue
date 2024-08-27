@@ -1,62 +1,121 @@
 <template>
-    <div>
-
-    <div v-if="loading" class="divLoding">
-            <h1>loading...</h1>
+  <div class="container">
+    <!-- Todo Items -->
+    <div class="row">
+      <div class="col-md-6 col-lg-6 col-xl-6" v-for="todo in serverData.content" :key="todo.mno">
+        <div class="todo-card">
+          <h2>{{ todo.mno }}</h2>
+          {{ todo.title }} 
+          <p>
+            <RouterLink :to="`/todo/read/${todo.mno}`" class="btn btn-success">
+              Read More &raquo;
+            </RouterLink>
+          </p>
+        </div>
+      </div>
     </div>
 
-        <ul>
-            <li v-for="todo in result.content" :key="todo.tno" @click="()=>handleClickMove(todo.mno)">
-                    {{ todo }}
-            </li>
-        </ul>
-
-        <template v-for="(p,idx) in pageArr" :key="idx">
-            <span class="pageSpan" @click="() => handleClickPage(p.page)" > {{ p.label }} </span>
-        </template>
-
+    <!-- Pagination -->
+    <div class="d-flex justify-content-center align-items-center mt-4">
+      <ul class="pagination">
+        <li v-for="{ page, label } in pageNums" :key="page" :class="`page-item ${ page == serverData.number + 1 ? 'active' : ''}`">
+          <a class="page-link" @click="() => handleClickPage(page)">{{ label }}</a>
+        </li>
+      </ul>
     </div>
+  </div>
 </template>
 
 <script setup>
+import { computed, onMounted, ref } from 'vue';
 import { getList } from '../../apis/todoAPI';
-import useListData from '../../hooks/useListData';
-const {loading ,router, refresh, result, pageArr, moveToRead} = useListData(getList)
+import { onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
+
+const serverData = ref({
+  content: [],
+  number: 0,
+  size: 0,
+  totalPages: 0
+});
+
+const router = useRouter();
+const route = useRoute();
 
 const handleClickPage = (pageNum) => {
+  const currentQueryPage = parseInt(route.query.page || 1);
+  if (currentQueryPage === pageNum) {
+    getList(pageNum).then(res => serverData.value = res);
+  } else {
+    router.push({ path: '/todo/list', query: { page: pageNum } });
+  }
+};
 
-router.push({query: {page:pageNum} }).then(() => {
-  refresh.value = !refresh.value
-})
+const pageNums = computed(() => {
+  const current = serverData.value.number + 1;
+  let lastPageNum = Math.ceil(current / 10.0) * 10;
+  const startPageNum = lastPageNum - 9;
+  const prev = startPageNum !== 1;
+  let next = true;
 
-}
+  if (serverData.value.totalPages <= lastPageNum) {
+    lastPageNum = serverData.value.totalPages;
+    next = false;
+  }
 
-const handleClickMove = (mno) => {
-    moveToRead(mno)
-}
+  const arr = [];
+  if (prev) {
+    arr.push({ page: startPageNum - 1, label: "Prev" });
+  }
+  for (let i = startPageNum; i <= lastPageNum; i++) {
+    arr.push({ page: i, label: i });
+  }
+  if (next) {
+    arr.push({ page: lastPageNum + 1, label: "Next" });
+  }
+  return arr;
+});
 
+onMounted(async () => {
+  const page = route.query.page || 1;
+  const result = await getList(page);
+  serverData.value = result;
+});
 
-
-
-
-
+onBeforeRouteUpdate(async (to, from, next) => {
+  const result = await getList(to.query.page);
+  serverData.value = result;
+  next();
+});
 </script>
 
-<style>
-
-.divLoding{
-  position: absolute;
-  top: 30vh;
-  left: 40vw;
-  width: 20vw;
-  height: 6vh;
-  background-color: tomato;
+<style scoped>
+.todo-card {
+  border: 1px solid #ddd;
+  border-radius: 0.25rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background-color: #fff;
 }
 
-.pageSpan {
-  margin:0.3em;
-  padding:0.1em;
-  border:1px solid black
+.todo-card h2 {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
 }
 
+.todo-card p {
+  margin-bottom: 1rem;
+}
+
+.pagination {
+  margin: 0;
+}
+
+.page-item.active .page-link {
+  background-color: #007bff;
+  border-color: #007bff;
+}
+
+.btn-success {
+  margin-top: 0.5rem;
+}
 </style>

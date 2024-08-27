@@ -1,6 +1,7 @@
 import axios from "axios"
 
-const host = 'http://49.174.76.109:8088/api/v1/todos'
+//const host = 'http://49.174.76.109:8088/api/v1/todos'
+const host = 'http://192.168.45.34:8088/api/v1/todos'
 
 
 export const getList = async(page) => { // 전체조회
